@@ -1,0 +1,132 @@
+(1)Parallel Coordinates Plot
+
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+import plotly.express as px
+
+# 1. read data
+df = pd.read_csv("Results_21MAR2022_nokcaladjust.csv")
+
+# 2. extract the fields of interest
+columns = [
+    'diet_group', 'mean_ghgs', 'mean_land', 'mean_watscar', 'mean_eut',
+    'mean_ghgs_ch4', 'mean_ghgs_n2o', 'mean_bio', 'mean_watuse', 'mean_acid'
+]
+df_selected = df[columns]
+
+# 3. aggregate mean by diet_group
+diet_avg = df_selected.groupby("diet_group").mean().reset_index()
+
+# 4. create a diet type map (for color coding)
+diet_color_map = {
+    'vegan': 0,
+    'veggie': 1,
+    'fish': 2,
+    'meat50': 3,
+    'meat': 4,
+    'meat100': 5
+}
+diet_avg['diet_numeric'] = diet_avg['diet_group'].map(diet_color_map)
+
+# 5. normalized indicator columns （These part codes were helped by AI tools）
+scaler = MinMaxScaler()
+scaled_data = scaler.fit_transform(diet_avg.iloc[:, 1:10])  # # select 9 environment variables
+df_scaled = pd.DataFrame(scaled_data, columns=diet_avg.columns[1:10])
+df_scaled.insert(0, 'diet_group', diet_avg['diet_group'])
+df_scaled['diet_numeric'] = diet_avg['diet_numeric']
+
+# 6. Set ColorBrewer Safe
+color_scale = px.colors.qualitative.Safe
+
+# 7. label mapping, showing more intuitive variable names
+labels = {
+    'mean_ghgs': 'GHGs',
+    'mean_land': 'Land',
+    'mean_watscar': 'WaterScarcity',        
+    'mean_eut': 'Eutrophication', 
+    'mean_ghgs_ch4': 'CH4',
+    'mean_ghgs_n2o': 'N2O',
+    'mean_bio': 'Biodiversity',
+    'mean_watuse': 'Water Use',
+    'mean_acid': 'Acidification'
+}
+
+# 8. plotting: Interactive Parallel Coordinates Plot(These part code helped by AI tools)
+fig = px.parallel_coordinates(
+    df_scaled,
+    color='diet_numeric',
+    dimensions=[
+        'mean_ghgs', 'mean_land', 'mean_watscar', 'mean_eut',
+        'mean_bio', 'mean_ghgs_ch4', 'mean_ghgs_n2o', 'mean_watuse', 'mean_acid'
+    ],
+    color_continuous_scale=color_scale,
+    labels=labels,
+    title="Interactive Parallel Coordinates Plot of Environmental Impacts by Diet"
+)
+
+#This code designed by myself
+fig.update_layout(
+    width=1200,    
+    height=800,
+    title_font_size=16,       
+    font=dict(size=16),       
+    margin=dict(l=100, r=100, t=120, b=100), 
+)  
+
+fig.update_traces(line=dict(showscale=False))
+
+# 9. show image
+fig.show()
+
+
+(2)radar graph
+import pandas as pd
+import plotly.graph_objects as go
+from sklearn.preprocessing import MinMaxScaler
+
+# read and deal data
+df = pd.read_csv("Results_21MAR2022_nokcaladjust.csv")
+columns = ['diet_group', 'mean_ghgs', 'mean_land', 'mean_watscar', 'mean_eut',
+           'mean_ghgs_ch4', 'mean_ghgs_n2o', 'mean_bio', 'mean_watuse', 'mean_acid']
+df_selected = df[columns]
+df_avg = df_selected.groupby("diet_group").mean().reset_index()
+
+# normalized indicators
+scaler = MinMaxScaler()
+scaled = scaler.fit_transform(df_avg.iloc[:, 1:10])
+df_scaled = pd.DataFrame(scaled, columns=df_avg.columns[1:10])
+df_scaled.insert(0, 'diet_group', df_avg['diet_group'])
+
+# setting indicators
+indicators = ['mean_ghgs', 'mean_land', 'mean_watscar', 'mean_eut',
+              'mean_ghgs_ch4', 'mean_ghgs_n2o', 'mean_bio', 'mean_watuse', 'mean_acid']
+indicators_label = ['GHGs', 'Land', 'Water Scarcity', 'Eutrophication',
+                    'CH4', 'N2O', 'Biodiversity', 'Water Use', 'Acidification']
+
+fig = go.Figure()
+
+# Draw a radar line for each diet type   (This code based myself but AI give some suggestions)
+for i in range(len(df_scaled)):
+    values = df_scaled.loc[i, indicators].tolist()
+    values += [values[0]]  
+    fig.add_trace(go.Scatterpolar(
+        r=values,
+        theta=indicators_label + [indicators_label[0]],
+        name=df_scaled.loc[i, 'diet_group'],
+        fill='toself',
+        opacity=0.6
+    ))
+
+# draw pictures
+fig.update_layout(
+    title="Radar Chart: Environmental Impact by Diet Type",
+    polar=dict(
+        radialaxis=dict(visible=True, range=[0, 1])
+    ),
+    showlegend=True,
+    width=800,
+    height=600
+)
+
+fig.show()
+
